@@ -6,6 +6,10 @@ app.get('/blackout', function (req, res) {
   res.sendFile(__dirname + '/public/arc/blackout-viewer.html');
 });
 
+app.get('/check-tracker', function (req, res) {
+  res.sendFile(__dirname + '/public/arc/check-tracker.html');
+});
+
 app.listen(process.env.PORT || 3000, function () {
   console.log('Example app listening on port 3000!');
 });

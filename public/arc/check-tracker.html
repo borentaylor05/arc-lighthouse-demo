@@ -1,0 +1,357 @@
+<!--[if IE 9]>
+	<script src="//cdn.rawgit.com/jpillora/xdomain/0.7.3/dist/xdomain.min.js" slave="https://lit-inlet-2632.herokuapp.com/web/IE9/proxy.html"></script>
+<![endif]-->
+<link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+<!--<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">-->
+<style>
+  .container {
+    font-family: "Century Gothic", Arial, sans-serif;
+  }
+  
+  label {
+    margin-top: 10px;
+    margin-bottom: 2px;
+    display: block;
+    font-size: 1.2em;
+    font-weight: 200;
+    padding-top: 10px;
+  }
+  
+  .formContainer {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 700px;
+  }
+  
+  .help-block {
+    color: red;
+  }
+  
+  label.line {
+    border-top: 1px solid #CCC;
+  }
+  
+  input[type="checkbox"] {
+    display: inline;
+    margin-left: 20px;
+    margin-right: 10px;
+    font-size: 1.3em;
+  }
+  
+  .bool {
+    display: inline;
+    font-size: 1.4em;
+    font-weight: bold;
+  }
+  
+  .boolCont {
+    border-radius: 3px;
+  }
+  
+  input[type="number"] {
+    width: 180px !important;
+  }
+  
+  .btn {
+    margin-top: 10px;
+    margin-bottom: 60px;
+  }
+  
+  .alert {
+    padding: 5px;
+    margin-bottom: 5px;
+    margin-top: 5px;
+  }
+</style>
+<div class="container" ng-app="App" ng-controller="Main as main">
+  <div class="formContainer">
+    <h1>Check Tracker </h1>
+    <form name="checkForm" novalidate>
+      <label>Check Number</label>
+      <input ng-model="main.check.check_num" name="check_num" class="form-control" type="number" required>
+      <p ng-show="checkForm.check_num.$invalid && !checkForm.check_num.$pristine" class="help-block">Check Number is required and must be numbers only.</p>
+
+      <label>Check Amount (numbers only - no $ signs)</label>
+      <input ng-model="main.check.check_amount" name="check_amount" class="form-control" type="number" required>
+      <p ng-show="checkForm.check_amount.$invalid && !checkForm.check_amount.$pristine" class="help-block">Check amount is required and must be a number.</p>
+
+      <label>Check Date (mm/dd/yyyy)</label>
+      <input ng-model="main.check.check_date" name="check_date" class="form-control" type="text" required>
+      <p ng-show="checkForm.check_date.$invalid && !checkForm.check_date.$pristine" class="help-block">Check Date is required.</p>
+
+      <label>Case Number</label>
+      <input ng-model="main.check.case_id" name="case_id" class="form-control" type="number" required>
+      <p ng-show="checkForm.case_id.$invalid && !checkForm.case_id.$pristine" class="help-block">Case ID is reequired and must be a number.</p>
+
+      <label>Name On Check</label>
+      <input ng-model="main.check.check_name" name="check_name" class="form-control" type="text" required>
+      <p ng-show="checkForm.check_name.$invalid && !checkForm.check_name.$pristine" class="help-block">Check name is required.</p>
+
+      <label for="state">State</label>
+      <select ng-options="state.abbreviation for state in main.states" name="state" ng-model="main.check.state" required></select>
+      <p ng-show="checkForm.state.$invalid && !checkForm.state.$pristine" class="help-block">State is required.</p>
+
+      <label>TSC Received On (mm/dd/yyyy)</label>
+      <input ng-model="main.check.tsc_received" name="tsc_received" class="form-control" type="text" required>
+      <p ng-show="checkForm.tsc_received.$invalid && !checkForm.tsc_received.$pristine" class="help-block">This field is required.</p>
+
+      <label>Organization</label>
+      <input ng-model="main.check.org" name="org" class="form-control" type="text">
+
+      <label>Order Number</label>
+      <input ng-model="main.check.order_num" name="order_num" class="form-control" type="text">
+      <!-- <p ng-show="checkForm.order_num.$invalid && !checkForm.order_num.$pristine" class="help-block">Order Number is required.</p> -->
+
+      <label>CRS / Offering ID / Order ID</label>
+      <input ng-model="main.check.crs" name="crs" class="form-control" type="text">
+
+      <label>Notes</label>
+      <input ng-model="main.check.notes" name="notes" class="form-control" type="text">
+
+      <label>Sent Back By</label>
+      <input ng-model="main.check.sent_back_by" name="sent_back_by" class="form-control" type="text">
+
+      <div ng-show="main.error" class="alert alert-danger"> {{ main.error }} </div>
+      <div ng-show="main.success" class="alert alert-success"> {{ main.success }} </div>
+
+      <div class="text-center">
+        <button ng-disabled="checkForm.$invalid" ng-click="main.submit(main.check)" class="btn btn-md btn-success">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
+<script>
+  var app = angular.module("App", []);
+
+  app.controller("Main", function($scope, $http) {
+    var main = this;
+
+    var typeSelected = function(check) {
+      if (check.created || check.acct_with_password || check.acct_forgot_password || check.no_share)
+        return true;
+      else
+        return false;
+    }
+
+    var defaultForm = {
+      check_num: null,
+      check_date: null,
+      check_amount: null,
+      case_id: null,
+      org: null,
+      check_name: null,
+      state: null,
+      tsc_received: null,
+      order_num: null,
+      crs: null,
+      notes: null,
+      sent_back_by: null,
+      agent_name: null
+    }
+
+    main.valid = function(check) {
+      return true;
+    }
+
+    main.submit = function(check) {
+      //	var url = "http://localhost:3000";
+      var url = "https://lit-inlet-2632.herokuapp.com";
+      check.agent_name = "DEMO" //window.parent._jive_current_user.displayName;
+      $http.post(url + "/arc/api/checks", check).success(function(resp) {
+        if (resp.status == 0) {
+          main.check = angular.copy(defaultForm);
+          $scope.checkForm.$setPristine();
+          main.success = "Check Tracker saved!  Form has been cleared for next use.";
+        } else {
+          main.error = resp.error;
+        }
+      });
+    }
+
+    main.states = [{
+      "name": "N/A",
+      "abbreviation": "N/A"
+    }, {
+      "name": "Alabama",
+      "abbreviation": "AL"
+    }, {
+      "name": "Alaska",
+      "abbreviation": "AK"
+    }, {
+      "name": "American Samoa",
+      "abbreviation": "AS"
+    }, {
+      "name": "Arizona",
+      "abbreviation": "AZ"
+    }, {
+      "name": "Arkansas",
+      "abbreviation": "AR"
+    }, {
+      "name": "California",
+      "abbreviation": "CA"
+    }, {
+      "name": "Colorado",
+      "abbreviation": "CO"
+    }, {
+      "name": "Connecticut",
+      "abbreviation": "CT"
+    }, {
+      "name": "Delaware",
+      "abbreviation": "DE"
+    }, {
+      "name": "District Of Columbia",
+      "abbreviation": "D.C."
+    }, {
+      "name": "Federated States Of Micronesia",
+      "abbreviation": "FM"
+    }, {
+      "name": "Florida",
+      "abbreviation": "FL"
+    }, {
+      "name": "Georgia",
+      "abbreviation": "GA"
+    }, {
+      "name": "Guam",
+      "abbreviation": "GU"
+    }, {
+      "name": "Hawaii",
+      "abbreviation": "HI"
+    }, {
+      "name": "Idaho",
+      "abbreviation": "ID"
+    }, {
+      "name": "Illinois",
+      "abbreviation": "IL"
+    }, {
+      "name": "Indiana",
+      "abbreviation": "IN"
+    }, {
+      "name": "Iowa",
+      "abbreviation": "IA"
+    }, {
+      "name": "Kansas",
+      "abbreviation": "KS"
+    }, {
+      "name": "Kentucky",
+      "abbreviation": "KY"
+    }, {
+      "name": "Louisiana",
+      "abbreviation": "LA"
+    }, {
+      "name": "Maine",
+      "abbreviation": "ME"
+    }, {
+      "name": "Marshall Islands",
+      "abbreviation": "MH"
+    }, {
+      "name": "Maryland",
+      "abbreviation": "MD"
+    }, {
+      "name": "Massachusetts",
+      "abbreviation": "MA"
+    }, {
+      "name": "Michigan",
+      "abbreviation": "MI"
+    }, {
+      "name": "Minnesota",
+      "abbreviation": "MN"
+    }, {
+      "name": "Mississippi",
+      "abbreviation": "MS"
+    }, {
+      "name": "Missouri",
+      "abbreviation": "MO"
+    }, {
+      "name": "Montana",
+      "abbreviation": "MT"
+    }, {
+      "name": "Nebraska",
+      "abbreviation": "NE"
+    }, {
+      "name": "Nevada",
+      "abbreviation": "NV"
+    }, {
+      "name": "New Hampshire",
+      "abbreviation": "NH"
+    }, {
+      "name": "New Jersey",
+      "abbreviation": "NJ"
+    }, {
+      "name": "New Mexico",
+      "abbreviation": "NM"
+    }, {
+      "name": "New York",
+      "abbreviation": "NY"
+    }, {
+      "name": "North Carolina",
+      "abbreviation": "NC"
+    }, {
+      "name": "North Dakota",
+      "abbreviation": "ND"
+    }, {
+      "name": "Northern Mariana Islands",
+      "abbreviation": "MP"
+    }, {
+      "name": "Ohio",
+      "abbreviation": "OH"
+    }, {
+      "name": "Oklahoma",
+      "abbreviation": "OK"
+    }, {
+      "name": "Oregon",
+      "abbreviation": "OR"
+    }, {
+      "name": "Palau",
+      "abbreviation": "PW"
+    }, {
+      "name": "Pennsylvania",
+      "abbreviation": "PA"
+    }, {
+      "name": "Puerto Rico",
+      "abbreviation": "PR"
+    }, {
+      "name": "Rhode Island",
+      "abbreviation": "RI"
+    }, {
+      "name": "South Carolina",
+      "abbreviation": "SC"
+    }, {
+      "name": "South Dakota",
+      "abbreviation": "SD"
+    }, {
+      "name": "Tennessee",
+      "abbreviation": "TN"
+    }, {
+      "name": "Texas",
+      "abbreviation": "TX"
+    }, {
+      "name": "Utah",
+      "abbreviation": "UT"
+    }, {
+      "name": "Vermont",
+      "abbreviation": "VT"
+    }, {
+      "name": "Virgin Islands",
+      "abbreviation": "VI"
+    }, {
+      "name": "Virginia",
+      "abbreviation": "VA"
+    }, {
+      "name": "Washington",
+      "abbreviation": "WA"
+    }, {
+      "name": "West Virginia",
+      "abbreviation": "WV"
+    }, {
+      "name": "Wisconsin",
+      "abbreviation": "WI"
+    }, {
+      "name": "Wyoming",
+      "abbreviation": "WY"
+    }]
+
+
+  });
+</script>
